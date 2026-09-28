@@ -1,0 +1,30 @@
+name: Publish update
+on:
+  push:
+    branches: [main]
+    paths: [latest/update.json]
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version
+        id: v
+        run: |
+          echo "name=$(python3 -c 'import json;print(json.load(open("latest/update.json"))["versionName"])')" >> "$GITHUB_OUTPUT"
+          python3 -c 'import json;print(json.load(open("latest/update.json"))["notes"])' > notes.txt
+      - name: Check the file matches update.json
+        run: |
+          test "$(sha256sum latest/learnink.apk | cut -d' ' -f1)" = "$(python3 -c 'import json;print(json.load(open("latest/update.json"))["sha256"])')"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.name }}
+          name: Learnink ${{ steps.v.outputs.name }}
+          make_latest: true
+          body_path: notes.txt
+          files: |
+            latest/learnink.apk
+            latest/update.json
